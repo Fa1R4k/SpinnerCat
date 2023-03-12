@@ -7,20 +7,21 @@ import androidx.lifecycle.viewModelScope
 import com.example.spinnercat.data.RepositoryImpl
 import com.example.spinnercat.data.model.BreedsResponse
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class CatViewModel : ViewModel() {
-
-    private val repository = RepositoryImpl()
+class CatViewModel @Inject constructor(
+    private val repository: RepositoryImpl,
+) : ViewModel() {
 
     private val _catLiveData = MutableLiveData<String>()
     val catLiveData: LiveData<String> get() = _catLiveData
 
-    private val breedIdMap : MutableMap<String?,String?> = mutableMapOf()
+    private val breedIdMap: MutableMap<String, String> = mutableMapOf()
 
     private val _breedsLiveData = MutableLiveData<List<BreedsResponse>>()
     val breedsLiveData: LiveData<List<BreedsResponse>> get() = _breedsLiveData
 
-    fun getCatImage(breed : String) {
+    fun getCatImage(breed: String) {
         val id = getIdByBreads(breed)
         viewModelScope.launch {
             _catLiveData.value = repository.getCatImage(id).first().image.toString()
@@ -30,13 +31,15 @@ class CatViewModel : ViewModel() {
     fun getBreads() {
         viewModelScope.launch {
             _breedsLiveData.value = repository.getBreedsList()
-            for (i in _breedsLiveData.value!!) {
-                breedIdMap[i.breed] = i.breedId
+            for (i in repository.getBreedsList()) {
+                val breed = i.breed ?: ""
+                val breedId = i.breedId ?: ""
+                breedIdMap[breed] = breedId
             }
         }
     }
 
-    private fun getIdByBreads(breeds : String) : String{
+    private fun getIdByBreads(breeds: String): String {
         return breedIdMap[breeds].toString()
     }
 }

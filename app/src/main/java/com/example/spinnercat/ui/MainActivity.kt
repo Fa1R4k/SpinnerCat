@@ -8,33 +8,59 @@ import android.widget.ImageView
 import android.widget.Spinner
 import androidx.activity.viewModels
 import com.bumptech.glide.Glide
+import com.example.spinnercat.DaggerApp
 import com.example.spinnercat.R
-
+import com.example.spinnercat.data.model.BreedsResponse
+import com.example.spinnercat.di.ViewModel.ViewModelFactory
+import javax.inject.Inject
 
 class MainActivity : AppCompatActivity() {
 
-    private val viewModel by viewModels<CatViewModel>()
+    @Inject
+    lateinit var factory: ViewModelFactory
+    private val viewModel: CatViewModel by viewModels { factory }
+
+    private lateinit var spinner: Spinner
+    private lateinit var image: ImageView
+    private lateinit var button: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        (applicationContext as DaggerApp).appComponent.inject(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        val spinner = findViewById<Spinner>(R.id.spinner)
+
+        setupViews()
+        setupButton()
+        setupImageView()
 
         viewModel.getBreads()
+        viewModel.breedsLiveData.observe(this, ::onBreedsLoaded)
+    }
 
-        viewModel.breedsLiveData.observe(this) {
-            val breedsNameList: List<String> =
-                viewModel.breedsLiveData.value?.map { it.breed.toString() } ?: listOf()
-            spinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, breedsNameList)
-        }
-        val image = findViewById<ImageView>(R.id.imageView)
-        val button = findViewById<Button>(R.id.button)
+    private fun setupViews() {
+        spinner = findViewById(R.id.spinner)
+        image = findViewById(R.id.imageView)
+        button = findViewById(R.id.button)
+    }
 
+    private fun setupButton() {
         button.setOnClickListener {
             viewModel.getCatImage(spinner.selectedItem.toString())
-            viewModel.catLiveData.observe(this) {
-                Glide.with(this).load(it).placeholder(R.drawable.load).into(image)
-            }
+            viewModel.catLiveData.observe(this, ::onCatImageLoaded)
         }
+    }
+
+    private fun setupImageView() {
+        Glide.with(this).load(R.drawable.load).into(image)
+    }
+
+    private fun onBreedsLoaded(breedsResponses: List<BreedsResponse>) {
+        val breedsNameList: List<String> = breedsResponses.mapNotNull { it.breed }
+        spinner.adapter =
+            ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, breedsNameList)
+    }
+
+    private fun onCatImageLoaded(catImageUrl: String) {
+        Glide.with(this).load(catImageUrl).into(image)
     }
 }
